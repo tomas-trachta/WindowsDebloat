@@ -1,0 +1,7 @@
+bin/
+obj/
+*.user
+debloat-gui-*.log
+publish/
+setup/Output/
+.vs/
