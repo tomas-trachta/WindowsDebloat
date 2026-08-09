@@ -8,6 +8,8 @@ Pure C# / .NET 9 WPF, no PowerShell or third-party tools at runtime.
 It deliberately does **not** touch Windows Defender, Windows Update, UAC, or
 the firewall.
 
+![Windows Debloat Toolkit screenshot](preview.png)
+
 ## Project layout
 
 | Path | What it is |
