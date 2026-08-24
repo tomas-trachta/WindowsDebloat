@@ -1,23 +1,24 @@
 using Windows.ApplicationModel;
 using Windows.Management.Deployment;
+using WindowsDebloat.Models;
 
 namespace WindowsDebloat.Helpers;
 
 public static class AppxHelper
 {
-	public static async Task RemoveByNamePattern(string namePattern, Action<string> log)
+	public static async Task RemoveByNamePattern(string namePattern, Action<string> log, HistoryRecorder? recorder = null)
 	{
 		var packageManager = new PackageManager();
 		var found = false;
 
-		found |= await RemoveInstalled(packageManager, namePattern, log);
-		found |= RemoveProvisioned(packageManager, namePattern, log);
+		found |= await RemoveInstalled(packageManager, namePattern, log, recorder);
+		found |= RemoveProvisioned(packageManager, namePattern, log, recorder);
 
 		if (!found)
 			log($"    not installed: {namePattern}");
 	}
 
-	static async Task<bool> RemoveInstalled(PackageManager packageManager, string namePattern, Action<string> log)
+	static async Task<bool> RemoveInstalled(PackageManager packageManager, string namePattern, Action<string> log, HistoryRecorder? recorder)
 	{
 		var found = false;
 
@@ -32,9 +33,14 @@ public static class AppxHelper
 			{
 				var result = await packageManager.RemovePackageAsync(package.Id.FullName, RemovalOptions.RemoveForAllUsers);
 				if (result.ExtendedErrorCode is null)
+				{
 					log($"    removed: {package.Id.Name}");
+					recorder?.Add(AppxRemovedEntry(package.Id.Name));
+				}
 				else
+				{
 					log($"    could not remove {package.Id.Name}: {result.ErrorText}");
+				}
 			}
 			catch (Exception ex)
 			{
@@ -45,7 +51,7 @@ public static class AppxHelper
 		return found;
 	}
 
-	static bool RemoveProvisioned(PackageManager packageManager, string namePattern, Action<string> log)
+	static bool RemoveProvisioned(PackageManager packageManager, string namePattern, Action<string> log, HistoryRecorder? recorder)
 	{
 		var found = false;
 
@@ -68,6 +74,7 @@ public static class AppxHelper
 			{
 				packageManager.DeprovisionPackageForAllUsersAsync(package.Id.FamilyName).AsTask().GetAwaiter().GetResult();
 				log($"    deprovisioned: {package.Id.Name}");
+				recorder?.Add(AppxRemovedEntry(package.Id.Name));
 			}
 			catch (Exception)
 			{
@@ -76,5 +83,15 @@ public static class AppxHelper
 		}
 
 		return found;
+	}
+
+	static HistoryEntry AppxRemovedEntry(string packageName)
+	{
+		return new HistoryEntry
+		{
+			Type = HistoryEntryType.AppxRemoved,
+			Description = $"app {packageName}",
+			AppxPackageName = packageName
+		};
 	}
 }

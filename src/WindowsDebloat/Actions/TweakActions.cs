@@ -35,18 +35,18 @@ public static class TweakActions
 
 	static Task Telemetry(ActionContext ctx)
 	{
-		ServiceHelper.Disable("DiagTrack", ctx.Log);
-		ServiceHelper.Disable("dmwappushservice", ctx.Log);
-		RegistryHelper.SetValue(@"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry", 0);
+		ServiceHelper.Disable("DiagTrack", ctx.Log, ctx.Recorder);
+		ServiceHelper.Disable("dmwappushservice", ctx.Log, ctx.Recorder);
+		RegistryHelper.SetValue(@"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry", 0, recorder: ctx.Recorder);
 		LogRegistryWrite(ctx, @"HKLM\SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry", 0);
 
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Application Experience\", "Microsoft Compatibility Appraiser", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Application Experience\", "ProgramDataUpdater", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Autochk\", "Proxy", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "Consolidator", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "UsbCeip", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "KernelCeipTask", ctx.Log);
-		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\DiskDiagnostic\", "Microsoft-Windows-DiskDiagnosticDataCollector", ctx.Log);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Application Experience\", "Microsoft Compatibility Appraiser", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Application Experience\", "ProgramDataUpdater", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Autochk\", "Proxy", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "Consolidator", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "UsbCeip", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\Customer Experience Improvement Program\", "KernelCeipTask", ctx.Log, ctx.Recorder);
+		ScheduledTaskHelper.Disable(@"\Microsoft\Windows\DiskDiagnostic\", "Microsoft-Windows-DiskDiagnosticDataCollector", ctx.Log, ctx.Recorder);
 
 		return Task.CompletedTask;
 	}
@@ -103,7 +103,7 @@ public static class TweakActions
 			SetReg(ctx, @"HKLM\SOFTWARE\Policies\Microsoft\Dsh", "AllowNewsAndInterests", 0);
 			SetReg(ctx, @"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarDa", 0);
 			SetReg(ctx, @"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "TaskbarMn", 0);
-			await AppxHelper.RemoveByNamePattern("MicrosoftWindows.Client.WebExperience", ctx.Log);
+			await AppxHelper.RemoveByNamePattern("MicrosoftWindows.Client.WebExperience", ctx.Log, ctx.Recorder);
 		}
 		else
 		{
@@ -117,7 +117,7 @@ public static class TweakActions
 		SetReg(ctx, @"HKCU\Software\Policies\Microsoft\Windows\WindowsCopilot", "TurnOffWindowsCopilot", 1);
 		SetReg(ctx, @"HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot", "TurnOffWindowsCopilot", 1);
 		SetReg(ctx, @"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", "ShowCopilotButton", 0);
-		await AppxHelper.RemoveByNamePattern("Microsoft.Copilot", ctx.Log);
+		await AppxHelper.RemoveByNamePattern("Microsoft.Copilot", ctx.Log, ctx.Recorder);
 		SetReg(ctx, @"HKCU\Software\Policies\Microsoft\Windows\WindowsAI", "DisableAIDataAnalysis", 1);
 		SetReg(ctx, @"HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableAIDataAnalysis", 1);
 	}
@@ -152,7 +152,7 @@ public static class TweakActions
 
 	static Task SysMain(ActionContext ctx)
 	{
-		ServiceHelper.Disable("SysMain", ctx.Log);
+		ServiceHelper.Disable("SysMain", ctx.Log, ctx.Recorder);
 		return Task.CompletedTask;
 	}
 
@@ -182,7 +182,7 @@ public static class TweakActions
 			ctx.Log("    OneDrive uninstaller not found.");
 		}
 
-		RegistryHelper.RemoveValue(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "OneDrive");
+		RegistryHelper.RemoveValue(@"HKCU\Software\Microsoft\Windows\CurrentVersion\Run", "OneDrive", ctx.Recorder);
 		ctx.Log($"    note: local files in {Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\\OneDrive are NOT deleted.");
 		return Task.CompletedTask;
 	}
@@ -190,14 +190,14 @@ public static class TweakActions
 	static Task XboxServices(ActionContext ctx)
 	{
 		foreach (var service in new[] { "XblAuthManager", "XblGameSave", "XboxNetApiSvc", "XboxGipSvc" })
-			ServiceHelper.Disable(service, ctx.Log);
+			ServiceHelper.Disable(service, ctx.Log, ctx.Recorder);
 
 		return Task.CompletedTask;
 	}
 
 	static Task SearchIndexing(ActionContext ctx)
 	{
-		ServiceHelper.Disable("WSearch", ctx.Log);
+		ServiceHelper.Disable("WSearch", ctx.Log, ctx.Recorder);
 		return Task.CompletedTask;
 	}
 
@@ -219,7 +219,7 @@ public static class TweakActions
 	{
 		SetReg(ctx, @"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects", "VisualFXSetting", 2);
 		SetReg(ctx, @"HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize", "EnableTransparency", 0);
-		RegistryHelper.SetValue(@"HKCU\Control Panel\Desktop", "MenuShowDelay", "0", RegistryValueKind.String);
+		RegistryHelper.SetValue(@"HKCU\Control Panel\Desktop", "MenuShowDelay", "0", RegistryValueKind.String, ctx.Recorder);
 		ctx.Log(@"    reg: HKCU\Control Panel\Desktop\MenuShowDelay = 0");
 		return Task.CompletedTask;
 	}
@@ -233,7 +233,7 @@ public static class TweakActions
 
 	static void SetReg(ActionContext ctx, string path, string name, int value)
 	{
-		RegistryHelper.SetValue(path, name, value);
+		RegistryHelper.SetValue(path, name, value, recorder: ctx.Recorder);
 		LogRegistryWrite(ctx, path, name, value);
 	}
 

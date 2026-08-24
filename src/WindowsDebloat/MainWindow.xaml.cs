@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WindowsDebloat.Actions;
+using WindowsDebloat.Helpers;
 using WindowsDebloat.Models;
 
 namespace WindowsDebloat;
@@ -171,7 +172,8 @@ public partial class MainWindow : Window
 		Progress.Maximum = Math.Max(1, workItems.Count);
 		Progress.Value = 0;
 
-		var ctx = new ActionContext { Log = AppendLog, IsWin11 = _isWin11 };
+		var recorder = new HistoryRecorder();
+		var ctx = new ActionContext { Log = AppendLog, IsWin11 = _isWin11, Recorder = recorder };
 
 		var completed = 0;
 		foreach (var task in workItems)
@@ -200,6 +202,8 @@ public partial class MainWindow : Window
 			KillExplorer();
 		}
 
+		SaveSnapshot(recorder);
+
 		AppendLog("");
 		AppendLog("All selected tasks finished. A reboot is recommended.");
 
@@ -208,6 +212,23 @@ public partial class MainWindow : Window
 		_running = false;
 		SetUiEnabled(true);
 		BtnRun.Content = "Apply again";
+	}
+
+	void SaveSnapshot(HistoryRecorder recorder)
+	{
+		var snapshot = new Snapshot { CreatedAt = DateTime.Now, Entries = recorder.Entries.ToList() };
+		var path = SnapshotStore.Save(_appDir, snapshot);
+
+		if (path is not null)
+			AppendLog($"Snapshot saved: {path}  (use Revert... to undo these changes)");
+	}
+
+	void BtnRevert_Click(object sender, RoutedEventArgs e)
+	{
+		if (_running)
+			return;
+
+		new RevertWindow(_appDir) { Owner = this }.ShowDialog();
 	}
 
 	static void KillExplorer()
@@ -238,6 +259,7 @@ public partial class MainWindow : Window
 	void SetUiEnabled(bool enabled)
 	{
 		BtnRun.IsEnabled = enabled;
+		BtnRevert.IsEnabled = enabled;
 		BtnAll.IsEnabled = enabled;
 		BtnNone.IsEnabled = enabled;
 		BtnRecommended.IsEnabled = enabled;

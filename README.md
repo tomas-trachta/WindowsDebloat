@@ -17,9 +17,11 @@ the firewall.
 | `WindowsDebloat.sln` | Solution file. |
 | `src/WindowsDebloat/WindowsDebloat.csproj` | The WPF app (`net9.0-windows10.0.19041.0`). |
 | `src/WindowsDebloat/MainWindow.xaml(.cs)` | The UI: checkbox list, options, progress bar, log pane. |
+| `src/WindowsDebloat/RevertWindow.xaml(.cs)` | The revert UI: pick a saved snapshot, preview it, undo it. |
 | `src/WindowsDebloat/Catalog/` | Static data — the list of apps and tweaks shown in the UI. |
 | `src/WindowsDebloat/Actions/` | What each tweak/app-removal actually does, run on a background thread. |
-| `src/WindowsDebloat/Helpers/` | Registry, service, scheduled task, Appx (WinRT `PackageManager`) and System Restore (WMI) helpers. |
+| `src/WindowsDebloat/Helpers/` | Registry, service, scheduled task, Appx (WinRT `PackageManager`), System Restore (WMI), and snapshot/history/revert helpers. |
+| `src/WindowsDebloat/Models/HistoryEntry.cs`, `Snapshot.cs` | The recorded "what changed, what it was before" data used to revert a run. |
 | `setup/WindowsDebloat.iss` | [Inno Setup](https://jrsoftware.org/isinfo.php) script that packages the published exe into `WindowsDebloat-Setup-<version>.exe`. |
 
 ## Building and running
@@ -83,6 +85,11 @@ or the Explorer restart. Click **Apply selected**; tasks run on a background
 thread with live output in the log pane (also saved to
 `debloat-gui-*.log` next to the exe). Reboot when it finishes.
 
+Every run that changes something also writes a snapshot to
+`snapshots\snapshot-<timestamp>.json` next to the exe, recording the previous
+value of everything it touched. Click **Revert...** to pick a snapshot and
+undo it — see [Reverting](#reverting).
+
 The app is **idempotent** — running it again is safe. A System Restore point
 is created first via WMI (skip with the checkbox; Windows only allows one per
 24 h).
@@ -133,6 +140,17 @@ is created first via WMI (skip with the checkbox; Windows only allows one per
 
 ## Reverting
 
+**Built in:** click **Revert...** in the app, pick a snapshot from the list
+(one is saved after every run that changes something, named by timestamp),
+and click *Revert this snapshot*. It undoes registry, service and
+scheduled-task changes from that run in reverse order, restoring each value
+to exactly what it was before — or removing it, if it didn't exist before.
+Apps aren't reinstalled automatically; the snapshot just lists which ones
+were removed so you know what to get back from the Store. Snapshots live in
+`snapshots\` next to the exe and are never deleted automatically.
+
+If a snapshot is missing or the app itself is gone, fall back to:
+
 - **Everything at once:** run `rstrui.exe` and pick the "Windows Debloat
   Toolkit" restore point.
 - **Apps:** reinstall from the Microsoft Store.
@@ -162,4 +180,4 @@ is created first via WMI (skip with the checkbox; Windows only allows one per
 - Scheduled tasks and services that don't exist on your build are skipped and
   logged, not errors.
 - Run at your own risk; review the selection before running. The restore
-  point is your undo button.
+  point and the per-run snapshot are your undo buttons.

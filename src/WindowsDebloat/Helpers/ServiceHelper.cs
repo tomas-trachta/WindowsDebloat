@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.ServiceProcess;
+using Microsoft.Win32;
+using WindowsDebloat.Models;
 
 namespace WindowsDebloat.Helpers;
 
@@ -10,6 +12,7 @@ public static class ServiceHelper
 	const uint SERVICE_CHANGE_CONFIG = 0x0002;
 	const uint SERVICE_NO_CHANGE = 0xFFFFFFFF;
 	const uint SERVICE_DISABLED = 4;
+	const int SERVICE_DEMAND_START = 3;
 
 	[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
 	static extern IntPtr OpenSCManager(string? machineName, string? databaseName, uint desiredAccess);
@@ -26,7 +29,7 @@ public static class ServiceHelper
 	[DllImport("advapi32.dll", SetLastError = true)]
 	static extern bool CloseServiceHandle(IntPtr handle);
 
-	public static bool Disable(string serviceName, Action<string> log)
+	public static bool Disable(string serviceName, Action<string> log, HistoryRecorder? recorder = null)
 	{
 		if (!ServiceExists(serviceName))
 		{
@@ -34,10 +37,71 @@ public static class ServiceHelper
 			return false;
 		}
 
+		recorder?.Add(CaptureEntry(serviceName));
+
 		StopIfRunning(serviceName);
-		SetStartupDisabled(serviceName);
+		ChangeStartType(serviceName, SERVICE_DISABLED);
 		log($"    service {serviceName}: stopped and disabled");
 		return true;
+	}
+
+	public static void Restore(HistoryEntry entry, Action<string> log)
+	{
+		var serviceName = entry.ServiceName!;
+
+		if (!ServiceExists(serviceName))
+		{
+			log($"    service {serviceName}: not present, skipping");
+			return;
+		}
+
+		ChangeStartType(serviceName, (uint)entry.ServicePreviousStartType);
+		log($"    service {serviceName}: startup type restored");
+
+		if (entry.ServiceWasRunning)
+			StartIfStopped(serviceName, log);
+	}
+
+	static void StartIfStopped(string serviceName, Action<string> log)
+	{
+		try
+		{
+			using var controller = new ServiceController(serviceName);
+			if (controller.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending)
+				return;
+
+			controller.Start();
+			controller.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
+			log($"    service {serviceName}: restarted");
+		}
+		catch (Exception ex)
+		{
+			log($"    service {serviceName}: could not restart - {ex.Message}");
+		}
+	}
+
+	static HistoryEntry CaptureEntry(string serviceName)
+	{
+		return new HistoryEntry
+		{
+			Type = HistoryEntryType.ServiceStartType,
+			Description = $"service {serviceName}",
+			ServiceName = serviceName,
+			ServicePreviousStartType = GetStartType(serviceName) ?? SERVICE_DEMAND_START,
+			ServiceWasRunning = IsRunning(serviceName)
+		};
+	}
+
+	static int? GetStartType(string serviceName)
+	{
+		using var key = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}");
+		return key?.GetValue("Start") as int?;
+	}
+
+	static bool IsRunning(string serviceName)
+	{
+		using var controller = new ServiceController(serviceName);
+		return controller.Status is ServiceControllerStatus.Running or ServiceControllerStatus.StartPending;
 	}
 
 	static bool ServiceExists(string serviceName)
@@ -63,7 +127,7 @@ public static class ServiceHelper
 		}
 	}
 
-	static void SetStartupDisabled(string serviceName)
+	static void ChangeStartType(string serviceName, uint startType)
 	{
 		var scmHandle = OpenSCManager(null, null, SC_MANAGER_CONNECT);
 		if (scmHandle == IntPtr.Zero)
@@ -78,7 +142,7 @@ public static class ServiceHelper
 			try
 			{
 				var ok = ChangeServiceConfig(
-					serviceHandle, SERVICE_NO_CHANGE, SERVICE_DISABLED, SERVICE_NO_CHANGE,
+					serviceHandle, SERVICE_NO_CHANGE, startType, SERVICE_NO_CHANGE,
 					null, null, IntPtr.Zero, null, null, null, null);
 
 				if (!ok)

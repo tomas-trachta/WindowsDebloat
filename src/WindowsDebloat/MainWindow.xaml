@@ -103,8 +103,11 @@
                          Background="#FF22252C" BorderBrush="{StaticResource PanelBorder}"/>
             <TextBlock x:Name="StatusText" Foreground="#FF9BA3AF" Margin="0,6,0,0" Text="Ready."/>
           </StackPanel>
-          <Button x:Name="BtnRun" Grid.Column="1" Content="Apply selected" FontSize="15" FontWeight="SemiBold"
-                  Background="#FF2F81F7" BorderBrush="#FF2F81F7" Padding="22,9" Margin="14,0,0,0" Click="BtnRun_Click"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal">
+            <Button x:Name="BtnRevert" Content="Revert..." FontSize="13" Padding="14,9" Margin="14,0,0,0" Click="BtnRevert_Click"/>
+            <Button x:Name="BtnRun" Content="Apply selected" FontSize="15" FontWeight="SemiBold"
+                    Background="#FF2F81F7" BorderBrush="#FF2F81F7" Padding="22,9" Margin="8,0,0,0" Click="BtnRun_Click"/>
+          </StackPanel>
         </Grid>
 
         <Border Grid.Row="2" Background="#FF0F1115" BorderBrush="{StaticResource PanelBorder}"

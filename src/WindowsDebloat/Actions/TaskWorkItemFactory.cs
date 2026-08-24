@@ -23,6 +23,6 @@ public static class TaskWorkItemFactory
 	static async Task RemovePackages(IReadOnlyList<string> packages, ActionContext ctx)
 	{
 		foreach (var package in packages)
-			await AppxHelper.RemoveByNamePattern(package, ctx.Log);
+			await AppxHelper.RemoveByNamePattern(package, ctx.Log, ctx.Recorder);
 	}
 }
